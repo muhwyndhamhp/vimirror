@@ -1,4 +1,5 @@
-import { Extension } from "@tiptap/vue-3";
+import { Extension as VueExtension } from "@tiptap/vue-3";
+import { Extension as ReactExtension } from "@tiptap/react";
 import { Editor } from "@tiptap/core";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { Plugin, PluginKey, TextSelection } from "prosemirror-state";
@@ -6,15 +7,13 @@ import { Node as PMNode } from "prosemirror-model";
 import { keymap } from "prosemirror-keymap";
 
 import { defaultKeymap, KeyType } from "./defaultKeymap";
-import { Action, Actions, Motion, Motions, VimModes } from "./types";
+import { Action, Actions, CursorPosition, Motion, Motions, VimModes } from "./types";
 
 const mappedDefaultKeyMap: Record<string, KeyType> = {};
 
 for (const key of defaultKeymap) {
   mappedDefaultKeyMap[key.keys] = key;
 }
-
-const { log } = console;
 
 const VimModesList = [
   VimModes.Normal,
@@ -33,20 +32,9 @@ enum TransactionMeta {
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
-    vim: {
-      /**
-       * Example Command description.
-       */
-      // exampleCommand: () => ReturnType,
-    };
+    vim: {};
     history: {
-      /**
-       * Undo recent changes
-       */
       undo: () => ReturnType;
-      /**
-       * Reapply reverted changes
-       */
       redo: () => ReturnType;
     };
   }
@@ -57,21 +45,61 @@ type MotionsInterface = {
 };
 
 const motions: MotionsInterface = {
-  [Motions.MoveUp]: ({
-    editor: {
-      state,
-      view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
-    },
-  }) => {
-    return true;
-  },
-
   [Motions.MoveDown]: ({
     editor: {
       state,
       view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
+      storage: vimirrorStorage,
+    },
+  }) => {
+    const storage = vimirrorStorage as VimirrorStorage;
+
+    if (storage.currentVimMode === VimModes.Insert) return false;
+
+    const { doc } = state;
+    const { $from } = state.selection;
+
+    const currentBlockStart = $from.start($from.depth);
+    const currentBlockEnd = currentBlockStart + $from.node($from.depth).nodeSize;
+
+    let nextBlock: { node: PMNode; pos: number } | null = null;
+
+    try {
+      doc.nodesBetween(currentBlockEnd, doc.content.size, (node, pos) => {
+        if (node.isBlock) {
+          nextBlock = { node, pos };
+          throw new Error("found");
+        }
+        return true;
+      });
+    } catch (e) {
+      if (e instanceof Error) {
+        if (e.message !== "found") throw e;
+      } else {
+        throw e; // re-throw if it’s not even an Error
+      }
+    }
+
+    if (!nextBlock) {
+      return false
+    }
+
+    const { pos } = nextBlock;
+
+    const tr = state.tr
+      .setSelection(TextSelection.create(state.doc, pos + 1))
+      .scrollIntoView();
+
+    dispatch(tr);
+
+    return true;
+  },
+
+  [Motions.MoveUp]: ({
+    editor: {
+      state,
+      view: { dispatch },
+      storage: vimirrorStorage,
     },
   }) => {
     const storage = vimirrorStorage as VimirrorStorage;
@@ -87,7 +115,7 @@ const motions: MotionsInterface = {
     let previousBlock: { node: PMNode; pos: number } | null = null;
 
     doc.nodesBetween(0, currentBlockStart - 1, (node, pos) => {
-      if (node.isBlock) {
+      if (node.isBlock && node.content.content.length > 0) {
         previousBlock = { node, pos };
       }
     });
@@ -110,7 +138,7 @@ const motions: MotionsInterface = {
     editor: {
       state,
       view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
+      storage: vimirrorStorage,
     },
   }) => {
     const storage = vimirrorStorage as VimirrorStorage;
@@ -133,7 +161,7 @@ const motions: MotionsInterface = {
     editor: {
       state,
       view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
+      storage: vimirrorStorage,
     },
   }) => {
     const storage = vimirrorStorage as VimirrorStorage;
@@ -153,14 +181,14 @@ const motions: MotionsInterface = {
     return true;
   },
   [Motions.FocusStart]: ({ editor }) => {
-    const storage = editor.storage.vimirror as VimirrorStorage;
+    const storage = editor.storage as VimirrorStorage;
 
     if (storage.currentVimMode === VimModes.Insert) return false;
 
     return editor.commands.focus("start");
   },
   [Motions.FocusEnd]: ({ editor }) => {
-    const storage = editor.storage.vimirror as VimirrorStorage;
+    const storage = editor.storage as VimirrorStorage;
 
     if (storage.currentVimMode === VimModes.Insert) return false;
 
@@ -171,7 +199,7 @@ const motions: MotionsInterface = {
     editor: {
       state,
       view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
+      storage: vimirrorStorage,
     },
   }) => {
     const storage = vimirrorStorage as VimirrorStorage;
@@ -221,7 +249,7 @@ const motions: MotionsInterface = {
 
       if (foundSeparator) {
         indexToJump = i + 2;
-        break; // breaking since we already found the index we want to jump to
+        break;
       }
     }
 
@@ -239,7 +267,7 @@ const motions: MotionsInterface = {
     editor: {
       state,
       view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
+      storage: vimirrorStorage,
     },
   }) => {
     const storage = vimirrorStorage as VimirrorStorage;
@@ -291,7 +319,7 @@ const motions: MotionsInterface = {
       ) {
         foundSeparator = true;
         indexToJump = i + 1;
-        break; // breaking since we already found the index we want to jump to
+        break;
       }
     }
 
@@ -314,19 +342,51 @@ type ActionsInterface = {
 const actions: ActionsInterface = {
   [Actions.EnterInsertMode]: ({
     editor: {
-      state: { tr },
+      state: { tr, doc, selection: { from, to, $from: baseFrom } },
       view: { dispatch },
     },
+    props
   }) => {
+    if (props) {
+      switch (props['cursorPosition']) {
+        case CursorPosition.BeforeCurrent:
+          break
+        case CursorPosition.AfterCurrent: {
+          const [$from, $to] = [doc.resolve(from + 1), doc.resolve(to + 1)];
+          const selection = new TextSelection($from, $to);
+          dispatch(tr.setSelection(selection))
+          break
+        }
+        case CursorPosition.BlockStart: {
+          const currentBlockStart = baseFrom.start(baseFrom.depth);
+          const [$from, $to] = [doc.resolve(currentBlockStart), doc.resolve(currentBlockStart)]
+
+          const selection = new TextSelection($from, $to)
+          dispatch(tr.setSelection(selection))
+          break
+        }
+        case CursorPosition.BlockEnd: {
+          const currentBlockStart = baseFrom.start(baseFrom.depth);
+          const currentBlockEnd = currentBlockStart + baseFrom.node(baseFrom.depth).nodeSize;
+          const [$from, $to] = [doc.resolve(currentBlockEnd - 2), doc.resolve(currentBlockEnd - 2)]
+
+          const selection = new TextSelection($from, $to)
+          dispatch(tr.setSelection(selection))
+          break
+        }
+      }
+    }
+
     dispatch(tr.setMeta(TransactionMeta.ChangeModeTo, VimModes.Insert));
 
     return true;
   },
+
   [Actions.EnterNormalMode]: ({
     editor: {
       state: { selection, doc, tr },
       view: { dispatch },
-      storage: { vimirror: vimirrorStorage },
+      storage: vimirrorStorage,
     },
   }) => {
     const storage = vimirrorStorage as VimirrorStorage;
@@ -355,13 +415,13 @@ const actions: ActionsInterface = {
     return true;
   },
   [Actions.Undo]: ({ editor }) => {
-    const storage = editor.storage.vimirror as VimirrorStorage;
+    const storage = editor.storage as VimirrorStorage;
     if (storage.currentVimMode === VimModes.Insert) return false;
 
     return editor.commands.undo();
   },
   [Actions.Redo]: ({ editor }) => {
-    const storage = editor.storage.vimirror as VimirrorStorage;
+    const storage = editor.storage as VimirrorStorage;
 
     if (storage.currentVimMode === VimModes.Insert) return false;
 
@@ -382,12 +442,15 @@ interface VimirrorStorage {
   cursorDecoration: Decoration;
 }
 
-const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
+const VimirrorReact = ReactExtension.create<VimirrorOptions, VimirrorStorage>({
+
+})
+
+const VimirrorVue = VueExtension.create<VimirrorOptions, VimirrorStorage>({
   name: "vimirror",
 
   addOptions() {
     return {
-      // allowing user to be informed about updates about VIM modes/keys and stuff
       updateValue: () => { },
     };
   },
@@ -433,20 +496,6 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
             }
 
             return true;
-
-            // if (event.key === 'i') mode = VimModes.Insert
-
-            // debugger
-            // if (event.key === 'Escape') mode = VimModes.Normal
-
-            // event.stopImmediatePropagation()
-            // event.stopPropagation()
-
-            // if (mode === VimModes.Insert) {
-            //   return false
-            // }
-
-            // return false
           },
         },
       },
@@ -480,15 +529,12 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
             class: "vim-cursor",
           });
 
-          // log(from, to)
-
           const changeModeTo: VimModes = tr.getMeta(
             TransactionMeta.ChangeModeTo
           );
 
           if (VimModesList.includes(changeModeTo)) {
             storage.currentVimMode = changeModeTo;
-            // console.log('newMode:- ', mode)
 
             options.updateValue({ mode: storage.currentVimMode });
           }
@@ -512,196 +558,12 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
       },
     });
 
-    // const vimKeyMapPlugin = keymap({
-    //   'a': (state, dispatch, view) => {
-    //     if (mode === VimModes.Insert || !dispatch) return false
-
-    //     const { selection, doc} = state
-
-    //     const { from, to } = selection
-
-    //     const [$from, $to] = [doc.resolve(from + 1), doc.resolve(to + 1)]
-
-    //     const newSelection = new TextSelection($from, $to)
-
-    //     const tr = state.tr.setSelection(newSelection)
-
-    //     tr.setMeta(TransactionMeta.ChangeModeTo, VimModes.Insert)
-
-    //     {
-    //       const nodeWithPos = {
-    //         node: undefined,
-    //         pos: 0,
-    //         to: 0
-    //       } as { node?: PMNode, pos: number, to: number }
-
-    //       doc.descendants((node, pos, parent) => {
-    //         if (!node.isBlock || nodeWithPos.node) return
-
-    //         const [nodeFrom, nodeTo] = [pos, pos + node.nodeSize]
-
-    //         if ((nodeFrom <= from) && (from <= nodeTo)) {
-    //           nodeWithPos.node = node
-    //           nodeWithPos.pos = pos
-    //           nodeWithPos.to = nodeTo
-    //         }
-    //       })
-
-    //       if (nodeWithPos.node) {
-    //         if (to + 1 === nodeWithPos.to - 1) tr.setMeta(TransactionMeta.SetShowCursor, true)
-    //         debugger
-    //       }
-    //     }
-
-    //     dispatch(tr)
-
-    //     return true
-    //   },
-
-    //   'j': (state, dispatch, view) => {
-    //     if (!dispatch) return false
-
-    //     const modesOfJ = [VimModes.Normal, VimModes.Visual, VimModes.Command]
-
-    //     if (modesOfJ.includes(mode)) {
-    //       // TODO: go down
-    //       return true
-    //     }
-
-    //     return false
-    //   },
-    //   'k': (state, dispatch, view) => {
-    //     if (!dispatch) return false
-
-    //     const modesOfK = [VimModes.Normal, VimModes.Visual, VimModes.Command]
-
-    //     if (modesOfK.includes(mode)) {
-    //       // TODO: go up
-    //       return true
-    //     }
-
-    //     return false
-    //   },
-
-    //   'I': (state, dispatch, view) => {
-    //     if (mode === VimModes.Insert || !dispatch) return false
-
-    //     const { doc, selection } = state
-
-    //     const { from, to } = selection
-
-    //     if (from !== to) return false
-
-    //     const nodeWithPos = {
-    //       node: undefined,
-    //       pos: 0,
-    //       to: 0
-    //     } as { node?: PMNode, pos: number, to: number }
-
-    //     doc.descendants((node, pos, parent) => {
-    //       if (!node.isBlock || nodeWithPos.node) return
-
-    //       const [nodeFrom, nodeTo] = [pos, pos + node.nodeSize]
-
-    //       if ((nodeFrom <= from) && (from <= nodeTo)) {
-    //         nodeWithPos.node = node
-    //         nodeWithPos.pos = pos
-    //         nodeWithPos.to = nodeTo
-    //       }
-    //     })
-
-    //     const newPos = doc.resolve(nodeWithPos.pos + 1)
-
-    //     const newSelection = new TextSelection(newPos, newPos)
-
-    //     const tr = state.tr.setSelection(newSelection)
-    //     tr.setMeta(TransactionMeta.ChangeModeTo, VimModes.Insert)
-
-    //     dispatch(tr)
-
-    //     return true
-    //   },
-
-    //   'A': (state, dispatch, view) => {
-    //     if (mode === VimModes.Insert || !dispatch) return false
-
-    //     const { doc, selection } = state
-
-    //     const { from, to } = selection
-
-    //     const nodeWithPos = {
-    //       node: undefined,
-    //       pos: 0,
-    //       to: 0
-    //     } as { node?: PMNode, pos: number, to: number }
-
-    //     doc.descendants((node, pos, parent) => {
-    //       if (!node.isBlock || nodeWithPos.node) return
-
-    //       const [nodeFrom, nodeTo] = [pos, pos + node.nodeSize]
-
-    //       if ((nodeFrom <= from) && (from <= nodeTo)) {
-    //         nodeWithPos.node = node
-    //         nodeWithPos.pos = pos
-    //         nodeWithPos.to = nodeTo
-    //       }
-    //     })
-
-    //     if (!nodeWithPos.node) return false
-
-    //     const newPos = doc.resolve(nodeWithPos.to - 1)
-
-    //     const newSelection = new TextSelection(newPos, newPos)
-
-    //     const tr = state.tr.setSelection(newSelection)
-    //     tr.setMeta(TransactionMeta.ChangeModeTo, VimModes.Insert)
-    //     tr.setMeta(TransactionMeta.SetShowCursor, true)
-
-    //     dispatch(tr)
-
-    //     return true
-    //   },
-
-    //   /**
-    //    * delete only the current character under cursor
-    //    */
-    //   'x':  (state, dispatch, view) => {
-    //     if (mode === VimModes.Insert || !dispatch) return false
-
-    //     const { selection, doc } = state
-
-    //     const { from, to, $from, $to } = selection
-
-    //     dispatch(state.tr.delete(from, to + 1))
-
-    //     return true
-    //   },
-
-    //   // undo
-    //   'u': (state, dispatch, view) => {
-    //     if (mode === VimModes.Insert || !dispatch) return false
-
-    //     editor.commands.undo?.()
-
-    //     return true
-    //   },
-
-    //   // redo
-    //   'Ctrl-r': (state, dispatch, view) => {
-    //     if (mode === VimModes.Insert || !dispatch) return false
-
-    //     editor.commands.redo?.()
-
-    //     return true
-    //   }
-    // })
-
     const handleKey = ({
-      keys,
       type,
       motion,
       mode,
       action,
+      props
     }: KeyType): boolean => {
       const storage = getStorage();
 
@@ -711,7 +573,7 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
         return motions[motion]({ editor });
 
       if (type === "action" && action && actions[action])
-        return actions[action]({ editor });
+        return actions[action]({ editor, props });
 
       return false;
     };
@@ -729,9 +591,8 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
 
   addCommands() {
     return {
-      // getMode: () => () => mode
     };
   },
 });
 
-export { Vimirror };
+export { VimirrorVue };

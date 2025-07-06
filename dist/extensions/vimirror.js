@@ -23,10 +23,10 @@ var TransactionMeta;
     TransactionMeta["SetShowCursor"] = "setShowCursor";
 })(TransactionMeta || (TransactionMeta = {}));
 const motions = {
-    [Motions.MoveUp]: ({ editor: { state, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Motions.MoveDown]: ({ editor: { state, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         return true;
     },
-    [Motions.MoveDown]: ({ editor: { state, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Motions.MoveUp]: ({ editor: { state, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         const storage = vimirrorStorage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
@@ -49,7 +49,7 @@ const motions = {
         dispatch(tr);
         return true;
     },
-    [Motions.MoveToRight]: ({ editor: { state, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Motions.MoveToRight]: ({ editor: { state, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         const storage = vimirrorStorage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
@@ -60,7 +60,7 @@ const motions = {
         dispatch(state.tr.setSelection(selection));
         return true;
     },
-    [Motions.MoveToLeft]: ({ editor: { state, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Motions.MoveToLeft]: ({ editor: { state, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         const storage = vimirrorStorage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
@@ -72,18 +72,18 @@ const motions = {
         return true;
     },
     [Motions.FocusStart]: ({ editor }) => {
-        const storage = editor.storage.vimirror;
+        const storage = editor.storage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
         return editor.commands.focus("start");
     },
     [Motions.FocusEnd]: ({ editor }) => {
-        const storage = editor.storage.vimirror;
+        const storage = editor.storage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
         return editor.commands.focus("end");
     },
-    [Motions.WordJumpForward]: ({ editor: { state, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Motions.WordJumpForward]: ({ editor: { state, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         const storage = vimirrorStorage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
@@ -128,7 +128,7 @@ const motions = {
         dispatch(state.tr.setSelection(newSelection));
         return true;
     },
-    [Motions.WordJumpBackward]: ({ editor: { state, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Motions.WordJumpBackward]: ({ editor: { state, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         const storage = vimirrorStorage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
@@ -179,7 +179,7 @@ const actions = {
         dispatch(tr.setMeta(TransactionMeta.ChangeModeTo, VimModes.Insert));
         return true;
     },
-    [Actions.EnterNormalMode]: ({ editor: { state: { selection, doc, tr }, view: { dispatch }, storage: { vimirror: vimirrorStorage }, }, }) => {
+    [Actions.EnterNormalMode]: ({ editor: { state: { selection, doc, tr }, view: { dispatch }, storage: vimirrorStorage, }, }) => {
         const storage = vimirrorStorage;
         let { from, to } = selection;
         from = from - 1;
@@ -198,13 +198,13 @@ const actions = {
         return true;
     },
     [Actions.Undo]: ({ editor }) => {
-        const storage = editor.storage.vimirror;
+        const storage = editor.storage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
         return editor.commands.undo();
     },
     [Actions.Redo]: ({ editor }) => {
-        const storage = editor.storage.vimirror;
+        const storage = editor.storage;
         if (storage.currentVimMode === VimModes.Insert)
             return false;
         return editor.commands.redo();
