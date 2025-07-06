@@ -52,6 +52,8 @@ export const defaultKeymap: KeyType[] = [
   { keys: 'l', type: 'motion', motion: Motions.MoveToRight },
   { keys: 'w', type: 'motion', motion: Motions.WordJumpForward },
   { keys: 'b', type: 'motion', motion: Motions.WordJumpBackward },
+  { keys: 'j', type: 'motion', motion: Motions.MoveDown },
+  { keys: 'k', type: 'motion', motion: Motions.MoveUp },
   // { keys: 'M', type: 'motion', motion: 'moveToMiddleLine', motionArgs: { linewise: true, toJumplist: true } },
   // { keys: 'j', type: 'motion', motion: 'moveByLines', motionArgs: { forward: true, linewise: true } },
   // { keys: 'k', type: 'motion', motion: 'moveByLines', motionArgs: { forward: false, linewise: true } },

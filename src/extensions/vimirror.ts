@@ -57,6 +57,55 @@ type MotionsInterface = {
 };
 
 const motions: MotionsInterface = {
+  [Motions.MoveUp]: ({
+    editor: {
+      state,
+      view: { dispatch },
+      storage: { vimirror: vimirrorStorage },
+    },
+  }) => {
+    return true;
+  },
+
+  [Motions.MoveDown]: ({
+    editor: {
+      state,
+      view: { dispatch },
+      storage: { vimirror: vimirrorStorage },
+    },
+  }) => {
+    const storage = vimirrorStorage as VimirrorStorage;
+
+    if (storage.currentVimMode === VimModes.Insert) return false;
+
+    const { doc } = state;
+
+    const { $from } = state.selection;
+
+    const currentBlockStart = $from.start($from.depth);
+
+    let previousBlock: { node: PMNode; pos: number } | null = null;
+
+    doc.nodesBetween(0, currentBlockStart - 1, (node, pos) => {
+      if (node.isBlock) {
+        previousBlock = { node, pos };
+      }
+    });
+
+    if (!previousBlock) {
+      return false;
+    }
+
+    const { pos } = previousBlock;
+
+    const tr = state.tr
+      .setSelection(TextSelection.create(state.doc, pos + 1))
+      .scrollIntoView();
+
+    dispatch(tr);
+
+    return true;
+  },
   [Motions.MoveToRight]: ({
     editor: {
       state,
@@ -157,7 +206,7 @@ const motions: MotionsInterface = {
 
     if (!content)
       throw new Error(
-        "If theres no content, where the hell are you pressing the W from?",
+        "If theres no content, where the hell are you pressing the W from?"
       );
 
     const inlineSelectionIndex = from - nodeWithPos.pos;
@@ -225,7 +274,7 @@ const motions: MotionsInterface = {
 
     if (!content)
       throw new Error(
-        'If theres no content, where the hell are you pressing the "b" from?',
+        'If theres no content, where the hell are you pressing the "b" from?'
       );
 
     const inlineSelectionIndex = from - nodeWithPos.pos;
@@ -339,7 +388,7 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
   addOptions() {
     return {
       // allowing user to be informed about updates about VIM modes/keys and stuff
-      updateValue: () => {},
+      updateValue: () => { },
     };
   },
 
@@ -434,7 +483,7 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
           // log(from, to)
 
           const changeModeTo: VimModes = tr.getMeta(
-            TransactionMeta.ChangeModeTo,
+            TransactionMeta.ChangeModeTo
           );
 
           if (VimModesList.includes(changeModeTo)) {
@@ -445,7 +494,7 @@ const Vimirror = Extension.create<VimirrorOptions, VimirrorStorage>({
           }
 
           const showCursorVal: boolean = tr.getMeta(
-            TransactionMeta.SetShowCursor,
+            TransactionMeta.SetShowCursor
           );
 
           if ([true, false].includes(showCursorVal))

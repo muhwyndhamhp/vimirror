@@ -11,6 +11,8 @@ export enum VimModes {
 export type Motion = ({ editor }: { editor: Editor }) => boolean
 
 export enum Motions {
+  MoveUp = 'moveUp',
+  MoveDown = 'moveDown',
   MoveToRight = 'moveToRight',
   MoveToLeft = 'moveToLeft',
   FocusStart = 'focusStart',
