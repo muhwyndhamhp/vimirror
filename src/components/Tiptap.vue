@@ -2,7 +2,7 @@
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 
-import { Vimirror, defaultKeymap } from '../extensions'
+import { VimirrorVue, defaultKeymap } from '../extensions'
 import { editorStateMock } from '../mocks'
 import { ref } from 'vue';
 
@@ -12,7 +12,7 @@ const editor = useEditor({
   content: editorStateMock,
   extensions: [
     StarterKit,
-    Vimirror.configure({ updateValue: ({ mode }) => currentVimMode.value = mode })
+    VimirrorVue.configure({ updateValue: ({ mode }) => currentVimMode.value = mode })
   ],
   autofocus: 'start',
 })
