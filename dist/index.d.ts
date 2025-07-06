@@ -1,0 +1,1 @@
+export { Vimirror } from './extensions/vimirror';

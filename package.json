@@ -1,18 +1,22 @@
 {
   "name": "vimirror",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "tsc --declaration --emitDeclarationOnly false --outDir dist",
     "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "vue": ">=3.0.0",
+    "@tiptap/vue-3": ">=2.0.0"
   },
   "dependencies": {
     "@tiptap/starter-kit": "^2.11.5",
-    "@tiptap/vue-3": "^2.11.5",
-    "@vueuse/core": "^12.7.0",
-    "vue": "^3.5.13"
+    "@vueuse/core": "^12.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
