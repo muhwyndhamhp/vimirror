@@ -9,4 +9,5 @@ export interface VimirrorStorage {
   currentVimMode: VimModes;
   showCursor: boolean;
   cursorDecoration: Decoration;
+  motionBuffer: string;
 }

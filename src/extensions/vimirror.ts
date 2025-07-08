@@ -50,6 +50,7 @@ function createVimirrorExtension(BaseExtension: typeof VueExtension | typeof Rea
         cursorDecoration: null as any,
         currentVimMode: VimModes.Normal,
         showCursor: false,
+        motionBuffer: "",
       };
     },
 

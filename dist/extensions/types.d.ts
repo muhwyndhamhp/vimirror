@@ -1,4 +1,4 @@
-import { Editor } from '@tiptap/core';
+import { Editor } from "@tiptap/core";
 export declare enum VimModes {
     Normal = "normal",
     Insert = "insert",
@@ -19,12 +19,19 @@ export declare enum Motions {
     WordJumpForward = "wordJumpForward",
     WordJumpBackward = "wordJumpBackward"
 }
-export type Action = ({ editor }: {
+export type Action = ({ editor, props }: {
     editor: Editor;
+    props?: Record<string, string>;
 }) => boolean;
 export declare enum Actions {
     EnterInsertMode = "enterInsertMode",
     EnterNormalMode = "enterNormalMode",
     Undo = "undo",
     Redo = "redo"
+}
+export declare enum CursorPosition {
+    BeforeCurrent = "beforeCurrent",
+    AfterCurrent = "afterCurrent",
+    BlockStart = "blockStart",
+    BlockEnd = "blockEnd"
 }

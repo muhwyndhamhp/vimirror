@@ -24,4 +24,11 @@ export var Actions;
     Actions["Undo"] = "undo";
     Actions["Redo"] = "redo";
 })(Actions || (Actions = {}));
+export var CursorPosition;
+(function (CursorPosition) {
+    CursorPosition["BeforeCurrent"] = "beforeCurrent";
+    CursorPosition["AfterCurrent"] = "afterCurrent";
+    CursorPosition["BlockStart"] = "blockStart";
+    CursorPosition["BlockEnd"] = "blockEnd";
+})(CursorPosition || (CursorPosition = {}));
 //# sourceMappingURL=types.js.map

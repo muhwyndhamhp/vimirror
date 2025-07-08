@@ -1,18 +1,10 @@
-import { Extension } from "@tiptap/vue-3";
-import { Editor } from "@tiptap/core";
-import { Decoration, DecorationSet } from "prosemirror-view";
-import { VimModes } from "./types";
+import { Extension as VueExtension } from "@tiptap/vue-3";
+import { VimirrorStorage } from "./storage";
 declare module "@tiptap/core" {
     interface Commands<ReturnType> {
         vim: {};
         history: {
-            /**
-             * Undo recent changes
-             */
             undo: () => ReturnType;
-            /**
-             * Reapply reverted changes
-             */
             redo: () => ReturnType;
         };
     }
@@ -22,13 +14,6 @@ interface VimirrorOptions {
         mode: string;
     }) => void;
 }
-interface VimirrorStorage {
-    editor: Editor;
-    decorationSet: DecorationSet;
-    prosemirror: HTMLDivElement;
-    currentVimMode: VimModes;
-    showCursor: boolean;
-    cursorDecoration: Decoration;
-}
-declare const Vimirror: Extension<VimirrorOptions, VimirrorStorage>;
-export { Vimirror };
+declare const VimirrorVue: VueExtension<VimirrorOptions, VimirrorStorage>;
+declare const VimirrorReact: VueExtension<VimirrorOptions, VimirrorStorage>;
+export { VimirrorVue, VimirrorReact };
