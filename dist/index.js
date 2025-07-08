@@ -1,2 +1,2 @@
-export { VimirrorVue } from './extensions/vimirror';
+export { VimirrorVue, VimirrorReact } from './extensions/vimirror';
 //# sourceMappingURL=index.js.map
